@@ -1,1 +1,1 @@
-# No external dependencies — runs on the base Python 3.12 sandbox image.
+mmo-maid-sdk
