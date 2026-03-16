@@ -38,7 +38,7 @@ def ready(ctx: Context):
     ctx.log("demo_counter v2.1 started (SDK)")
 
 
-@plugin.on_event("message_create")
+@plugin.on_event("message")
 def on_message(ctx: Context, event: dict):
     author = event.get("author") if isinstance(event.get("author"), dict) else {}
 
