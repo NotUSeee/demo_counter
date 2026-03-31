@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="/static/mmo-maid-sdk.js"></script>
+</head>
+<body>
+
+<!-- Stat Cards -->
+<div class="stats-grid">
+  <div class="card">
+    <div class="stat-label">Total Clicks</div>
+    <div class="stat-value" id="total">&mdash;</div>
+    <div class="stat-sub" id="total-sub"></div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Unique Clickers</div>
+    <div class="stat-value" id="users">&mdash;</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Goal Progress</div>
+    <div id="goal-container">
+      <div class="goal-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+          <circle id="goal-arc" cx="32" cy="32" r="26" fill="none" stroke="var(--gold)" stroke-width="5"
+                  stroke-dasharray="0 163.4" stroke-dashoffset="0"
+                  transform="rotate(-90 32 32)" stroke-linecap="round" opacity="0.85"/>
+          <text id="goal-pct" x="32" y="32" text-anchor="middle" dy="0.35em"
+                fill="var(--gold)" font-size="14" font-weight="700">0%</text>
+        </svg>
+        <div>
+          <div class="ring-pct" id="goal-val">&mdash;</div>
+          <div class="ring-label" id="goal-remaining"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Chart -->
+<div class="chart-section">
+  <div class="card">
+    <div class="section-title">Click Activity (24h)</div>
+    <div id="chart"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- Leaderboard -->
+<div class="leaderboard">
+  <div class="card">
+    <div class="section-title">Leaderboard</div>
+    <div id="leaderboard"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<script>
+function fmt(n) { return n == null ? '0' : Number(n).toLocaleString(); }
+
+MaidSDK.ready(function() {
+  // Stats
+  Promise.all([
+    MaidSDK.rpc('get_total_stat'),
+    MaidSDK.rpc('get_users_stat'),
+    MaidSDK.rpc('get_goal_stat'),
+  ]).then(function(res) {
+    var total = res[0], users = res[1], goal = res[2];
+    document.getElementById('total').textContent = fmt(total.value);
+    if (total.change) document.getElementById('total-sub').textContent = total.change;
+    document.getElementById('users').textContent = fmt(users.value);
+
+    var goalVal = goal.value || 1;
+    var totalVal = total.value || 0;
+    var pct = Math.min(100, Math.round((totalVal / goalVal) * 100));
+    document.getElementById('goal-val').textContent = fmt(goalVal);
+    document.getElementById('goal-remaining').textContent = (goal.change || '');
+    document.getElementById('goal-pct').textContent = pct + '%';
+    // Animate ring
+    var circ = 2 * Math.PI * 26;
+    document.getElementById('goal-arc').setAttribute('stroke-dasharray', (pct/100*circ) + ' ' + circ);
+  }).catch(function() {});
+
+  // Chart
+  MaidSDK.rpc('get_activity_chart').then(function(data) {
+    var el = document.getElementById('chart');
+    if (!data || !data.labels || data.labels.length === 0) {
+      el.innerHTML = '<div class="empty">No activity yet</div>';
+      return;
+    }
+    var values = data.series[0].data;
+    var max = Math.max.apply(null, values) || 1;
+    var html = '<div class="bar-chart">';
+    for (var i = 0; i < data.labels.length; i++) {
+      var h = Math.max(2, (values[i] / max) * 160);
+      html += '<div class="bar-col">';
+      if (values[i] > 0) html += '<span class="bar-val">' + values[i] + '</span>';
+      html += '<div class="bar-fill" style="height:' + h + 'px"></div>';
+      html += '<span class="bar-label">' + data.labels[i].split(' ').pop() + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('chart').innerHTML = '<div class="empty">Failed to load</div>';
+  });
+
+  // Leaderboard
+  MaidSDK.rpc('get_leaderboard').then(function(data) {
+    var el = document.getElementById('leaderboard');
+    if (!data.rows || data.rows.length === 0) {
+      el.innerHTML = '<div class="empty">No clicks yet — be the first!</div>';
+      return;
+    }
+    var maxClicks = data.rows[0].clicks || 1;
+    var html = '';
+    data.rows.forEach(function(row) {
+      var rankClass = row.rank === 1 ? 'gold' : row.rank === 2 ? 'silver' : row.rank === 3 ? 'bronze' : 'normal';
+      var barW = Math.max(2, (row.clicks / maxClicks) * 100);
+      html += '<div class="lb-row">';
+      html += '<div class="lb-rank ' + rankClass + '">' + row.rank + '</div>';
+      html += '<div class="lb-user">' + (row.user_id || '???') + '</div>';
+      html += '<div class="lb-clicks">' + fmt(row.clicks) + '</div>';
+      html += '<div class="lb-bar-track"><div class="lb-bar-fill" style="width:' + barW + '%"></div></div>';
+      html += '</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('leaderboard').innerHTML = '<div class="empty">Failed to load</div>';
+  });
+});
+</script>
+</body>
+</html>

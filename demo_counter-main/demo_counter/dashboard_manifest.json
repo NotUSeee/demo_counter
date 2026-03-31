@@ -1,0 +1,7 @@
+{
+  "mode": "iframe",
+  "pages": [
+    { "id": "overview", "title": "Overview",  "src": "index.html"    },
+    { "id": "settings", "title": "Settings",  "src": "settings.html" }
+  ]
+}

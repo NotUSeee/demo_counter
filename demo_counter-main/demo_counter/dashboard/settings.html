@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script src="/static/mmo-maid-sdk.js"></script>
+</head>
+<body>
+
+<div style="max-width:560px;">
+  <div class="card">
+    <div class="section-title">Plugin Configuration</div>
+    <form id="config-form">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="goal">Counter Goal</label>
+          <input type="number" id="goal" class="form-input" min="1" max="1000000" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="theme">Board Theme</label>
+          <select id="theme" class="form-select" disabled>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="purple">Purple</option>
+            <option value="red">Red</option>
+            <option value="gold">Gold</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:1.5rem;">Channel Configuration</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="log_channel_id">Log Channel ID</label>
+          <input type="text" id="log_channel_id" class="form-input" placeholder="Paste channel ID" disabled>
+          <div class="form-hint">Channel where click milestones are announced</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="welcome_channel_id">Welcome Channel ID</label>
+          <input type="text" id="welcome_channel_id" class="form-input" placeholder="Paste channel ID" disabled>
+          <div class="form-hint">Channel for new user welcome messages</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:1.5rem;">Reward Roles</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">
+        Automatically assign roles when users reach click milestones.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="role_10_id">10 Clicks Role ID</label>
+          <input type="text" id="role_10_id" class="form-input" placeholder="Paste role ID" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="role_50_id">50 Clicks Role ID</label>
+          <input type="text" id="role_50_id" class="form-input" placeholder="Paste role ID" disabled>
+        </div>
+      </div>
+      <div class="form-group" style="max-width:calc(50% - 0.5rem);">
+        <label class="form-label" for="role_100_id">100 Clicks Role ID</label>
+        <input type="text" id="role_100_id" class="form-input" placeholder="Paste role ID" disabled>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <button type="submit" class="btn btn-gold" id="save-btn" disabled>Save Settings</button>
+      </div>
+      <div class="toast" id="toast"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+var FIELDS = ['goal', 'theme', 'log_channel_id', 'welcome_channel_id', 'role_10_id', 'role_50_id', 'role_100_id'];
+
+MaidSDK.ready(function() {
+  var toast = document.getElementById('toast');
+  var saveBtn = document.getElementById('save-btn');
+
+  // Load settings
+  MaidSDK.rpc('get_settings').then(function(data) {
+    var vals = data.values || data || {};
+    FIELDS.forEach(function(f) {
+      var el = document.getElementById(f);
+      if (el) {
+        el.value = vals[f] || '';
+        el.disabled = false;
+      }
+    });
+    saveBtn.disabled = false;
+  }).catch(function(e) {
+    toast.className = 'toast error';
+    toast.textContent = 'Failed to load settings: ' + e.message;
+  });
+
+  // Save
+  document.getElementById('config-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    toast.className = 'toast';
+
+    var values = {};
+    FIELDS.forEach(function(f) {
+      var el = document.getElementById(f);
+      values[f] = el ? el.value.trim() : '';
+    });
+
+    MaidSDK.rpc('save_settings', { values: values }).then(function(res) {
+      if (res.ok) {
+        toast.className = 'toast success';
+        toast.textContent = 'Settings saved!';
+      } else {
+        toast.className = 'toast error';
+        toast.textContent = res.error || 'Save failed';
+      }
+    }).catch(function(e) {
+      toast.className = 'toast error';
+      toast.textContent = 'Error: ' + e.message;
+    }).finally(function() {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Settings';
+    });
+  });
+});
+</script>
+</body>
+</html>
